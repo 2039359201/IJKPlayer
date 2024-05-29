@@ -53,6 +53,17 @@ ANativeWindow *nativeWindow;
 //nativeWindow_Buffer
 ANativeWindow_Buffer nativeWindow_buffer;
 
+//默认延迟时间
+double defaultDelayTime = 0;
+//时间基数
+double sigleAudioTime = 0;
+//时间基数
+double sigleVideoTime = 0;
+
+//播放的时间 当前时间
+double videoNowTime = 0;
+double audioNowTime = 0;
+
 //全局变量
 jobject mthiz;
 
@@ -69,11 +80,26 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     return JNI_VERSION_1_4;
 }
 
+
+//diff判断
+double getDelayTime(double diff) {
+    //音频超前3ms
+    double delayTime =defaultDelayTime;
+    if (diff > 0.003) {
+        delayTime = 0;
+
+    }else if(diff < -0.003){
+        delayTime = defaultDelayTime*3/2;
+    }
+    LOGV("延迟时间：%f",delayTime);
+    return delayTime;
+}
+
 //读取线程方法
 bool isStart = false;
 
 void *decodePacket(void *pVoid) {
-    LOGI("==========解码线程");
+    //LOGI("==========解码线程");
     while (isStart) {
         if (audioQueue->size() > 50 || videoQueue->size() > 50) {
             continue;
@@ -101,18 +127,28 @@ void *decodePacket(void *pVoid) {
 
 //视频解码线程
 void *decodeVideo(void *pVoid) {
-    LOGI("==========视频解码线程");
+    //LOGI("==========视频解码线程");
     while (isStart) {
         AVPacket *videoPacket = av_packet_alloc();
         videoQueue->getAvPacket(videoPacket);
-        LOGI("视频解码");
+        //LOGI("视频解码");
         //解码
         int ret = avcodec_send_packet(videoContext, videoPacket);
         //挂载数据流
         AVFrame *videoFrame = av_frame_alloc();
         ret = avcodec_receive_frame(videoContext, videoFrame);
 
-        LOGI("解码成功");
+        //LOGI("解码成功");
+
+        //休眠以匹配音频
+        double pts = av_frame_get_best_effort_timestamp(videoFrame);
+        pts=pts*sigleVideoTime;
+        videoNowTime = pts;
+        double diff = audioNowTime - videoNowTime;
+        double time = getDelayTime(diff)*1000000;//微秒
+        LOGV("videoNowTime: %f, audioNowTime: %f, diff: %f", videoNowTime, audioNowTime, diff);
+        av_usleep(time);
+
         //rgb转换yuva
         sws_scale(swsContext, videoFrame->data, videoFrame->linesize, 0, videoHeight,
                   rgbFrame->data, rgbFrame->linesize);
@@ -140,7 +176,7 @@ void *decodeVideo(void *pVoid) {
 
 //音频解码线程
 void *decodeAudio(void *pVoid) {
-    LOGI("==========音频解码线程");
+    //LOGI("==========音频解码线程");
     AVFrame *audioFrame = av_frame_alloc();
     swrContext = swr_alloc();
     //设置参数
@@ -158,11 +194,11 @@ void *decodeAudio(void *pVoid) {
     while (isStart) {
         AVPacket *audioPacket = av_packet_alloc();
         audioQueue->getAvPacket(audioPacket);
-        LOGI("音频 数据包 大小 %d", audioPacket->size);
+        //LOGI("音频 数据包 大小 %d", audioPacket->size);
         //解码
         int ret = avcodec_send_packet(audioContext, audioPacket);
         if(ret<0 && ret!=AVERROR(EAGAIN) && ret!=AVERROR_EOF){
-            LOGI("音频解码失败 %d",ret);
+            //LOGI("音频解码失败 %d",ret);
             continue;
         }
         //挂载数据流
@@ -180,6 +216,9 @@ void *decodeAudio(void *pVoid) {
             //解码大小
             int size = av_samples_get_buffer_size(NULL, out_channels_nb, audioFrame->nb_samples,
                                                   out_format, 1);
+
+            audioNowTime= audioFrame->pts * sigleAudioTime;
+
             //回调java方法
             JNIEnv *jniEnv;
             LOGD("获取pcm数据 %d  ", size);
@@ -194,10 +233,10 @@ void *decodeAudio(void *pVoid) {
             javaVM->DetachCurrentThread();
 
         }
-        LOGI("解码后 大小:%d", audioFrame->pkt_size);
+        //LOGI("解码后 大小:%d", audioFrame->pkt_size);
     }
 
-    LOGI("解码成功");
+    //LOGI("解码成功");
 
     //重采样
 
@@ -241,6 +280,10 @@ Java_com_example_ijkplayer_MNPlayer_play(JNIEnv *env, jobject thiz, jstring url_
             AVCodecParameters *parameters = avFormatContext->streams[i]->codecpar;
             LOGI("宽度%d", parameters->width);
             LOGI("高度%d", parameters->height);
+
+            //延迟
+            LOGI("延迟时间：%d", parameters->video_delay);
+
             //解码器
             AVCodec * dec = avcodec_find_decoder(parameters->codec_id);
             //解码器 上下文
@@ -249,6 +292,18 @@ Java_com_example_ijkplayer_MNPlayer_play(JNIEnv *env, jobject thiz, jstring url_
             avcodec_parameters_to_context(videoContext, parameters);
             //开启解码
             avcodec_open2(videoContext, dec, 0);
+
+            AVRational avRational = avFormatContext->streams[i]->time_base;
+            //时间基数，pts是时间戳（顺序）
+            sigleVideoTime = avRational.num/ (double)avRational.den;
+            LOGI("video时间基数：%f", sigleVideoTime);
+            //帧率 帧数/时间
+            int num = avFormatContext->streams[i]->avg_frame_rate.num;
+            int den= avFormatContext->streams[i]->avg_frame_rate.den;
+            double fps = num / (double)den;
+            defaultDelayTime = 1.0 / fps;
+            LOGI("帧率：%f", fps);
+            LOGI("延迟时间：%f", defaultDelayTime);
 
         } else if (AVMEDIA_TYPE_AUDIO == avFormatContext->streams[i]->codecpar->codec_type) {//音频流
             audioIndex = i;
@@ -264,6 +319,10 @@ Java_com_example_ijkplayer_MNPlayer_play(JNIEnv *env, jobject thiz, jstring url_
             avcodec_parameters_to_context(audioContext, parameters);
             //开启解码
             avcodec_open2(audioContext, dec, 0);
+
+            AVRational time_base = avFormatContext->streams[i]->time_base;
+            sigleAudioTime = time_base.num/ (double)time_base.den;
+            LOGI("audio时间基数：%f", sigleAudioTime);
         }
     }
     //获取宽高
