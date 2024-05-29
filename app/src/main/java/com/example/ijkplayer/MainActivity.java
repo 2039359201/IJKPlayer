@@ -11,6 +11,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import com.example.ijkplayer.databinding.ActivityMainBinding;
 import android.Manifest;
@@ -59,14 +60,35 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+
+        playButton = findViewById(R.id.pause);
+
+        //注册点击事件
+        // 设置 SurfaceView 点击监听器
+        surfaceView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (playButton.getVisibility() == View.VISIBLE) {
+                    playButton.setVisibility(View.GONE);
+                } else {
+                    playButton.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
     }
 
     public void play(View view){
         String folderurl = new File(Environment.getExternalStorageDirectory(),"input.mp4").getAbsolutePath();
         MNPlayer mnPlayer = new MNPlayer(surfaceView);
+
         mnPlayer.play(folderurl,surface);
 
+
+
     }
+
+    private Button playButton;
 
 
 }
