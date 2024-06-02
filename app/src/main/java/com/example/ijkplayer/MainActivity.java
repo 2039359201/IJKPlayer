@@ -73,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     playButton.setVisibility(View.VISIBLE);
                 }
+                mnPlayer.pause();//暂停继续
             }
         });
 
@@ -80,15 +81,17 @@ public class MainActivity extends AppCompatActivity {
 
     public void play(View view){
         String folderurl = new File(Environment.getExternalStorageDirectory(),"input.mp4").getAbsolutePath();
-        MNPlayer mnPlayer = new MNPlayer(surfaceView);
-
+        //网络地址
+        //String folderurl = "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8";
+        mnPlayer = new MNPlayer(surfaceView);
+        playButton.setVisibility(View.GONE);
+        // 调用 MNPlayer 的 play 方法
         mnPlayer.play(folderurl,surface);
-
-
 
     }
 
-    private Button playButton;
 
+    private Button playButton;
+    private MNPlayer mnPlayer;
 
 }

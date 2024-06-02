@@ -25,6 +25,8 @@ public class MNPlayer {
 
     public native void play(String url, Surface surface);
 
+    public native void pause();//暂停继续
+
     //通道数 采样位数 频率
     public void createTrack(int sampleRateInHz, int nb_channals) {
         Log.d("audioTrack","sampleRateInHz:"+sampleRateInHz+" nb_channals:"+nb_channals);

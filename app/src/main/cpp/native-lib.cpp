@@ -67,6 +67,10 @@ double audioNowTime = 0;
 //全局变量
 jobject mthiz;
 
+//暂停标记
+bool isPause = false;
+pthread_mutex_t pauseMutex = PTHREAD_MUTEX_INITIALIZER;
+
 //回调方法
 jmethodID playTrack;
 _JavaVM *javaVM = NULL;
@@ -101,6 +105,14 @@ bool isStart = false;
 void *decodePacket(void *pVoid) {
     //LOGI("==========解码线程");
     while (isStart) {
+        pthread_mutex_lock(&pauseMutex);
+        while (isPause) {
+            pthread_mutex_unlock(&pauseMutex);
+            av_usleep(10000);  // Sleep for 10 ms to prevent busy waiting
+            pthread_mutex_lock(&pauseMutex);
+        }
+        pthread_mutex_unlock(&pauseMutex);
+
         if (audioQueue->size() > 50 || videoQueue->size() > 50) {
             continue;
         }
@@ -129,6 +141,15 @@ void *decodePacket(void *pVoid) {
 void *decodeVideo(void *pVoid) {
     //LOGI("==========视频解码线程");
     while (isStart) {
+        //暂停
+        pthread_mutex_lock(&pauseMutex);
+        while (isPause) {
+            pthread_mutex_unlock(&pauseMutex);
+            av_usleep(10000);
+            pthread_mutex_lock(&pauseMutex);
+        }
+        pthread_mutex_unlock(&pauseMutex);
+
         AVPacket *videoPacket = av_packet_alloc();
         videoQueue->getAvPacket(videoPacket);
         //LOGI("视频解码");
@@ -192,6 +213,16 @@ void *decodeAudio(void *pVoid) {
 
     uint8_t * out_buffer = (uint8_t *) av_malloc(44100 * 2);
     while (isStart) {
+
+        //暂停
+        pthread_mutex_lock(&pauseMutex);
+        while (isPause) {
+            pthread_mutex_unlock(&pauseMutex);
+            av_usleep(10000);
+            pthread_mutex_lock(&pauseMutex);
+        }
+        pthread_mutex_unlock(&pauseMutex);
+
         AVPacket *audioPacket = av_packet_alloc();
         audioQueue->getAvPacket(audioPacket);
         //LOGI("音频 数据包 大小 %d", audioPacket->size);
@@ -376,4 +407,13 @@ Java_com_example_ijkplayer_MNPlayer_play(JNIEnv *env, jobject thiz, jstring url_
     pthread_create(&thread_audio, NULL, decodeAudio, NULL);
 
     env->ReleaseStringUTFChars(url_, url);
+}
+
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_example_ijkplayer_MNPlayer_pause(JNIEnv *env, jobject thiz) {
+    pthread_mutex_lock(&pauseMutex);
+    isPause = !isPause;
+    pthread_mutex_unlock(&pauseMutex);
 }
