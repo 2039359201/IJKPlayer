@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import com.example.ijkplayer.databinding.ActivityMainBinding;
 import android.Manifest;
+import android.widget.Toast;
 
 import java.io.File;
 
@@ -73,7 +74,13 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     playButton.setVisibility(View.VISIBLE);
                 }
-                mnPlayer.pause();//暂停继续
+                if (mnPlayer!=null) {
+                    mnPlayer.pause();//暂停继续
+                }else{
+                    // 提示用户播放器未初始化
+                    Toast.makeText(MainActivity.this, "Player not initialized", Toast.LENGTH_SHORT).show();
+                }
+
             }
         });
 

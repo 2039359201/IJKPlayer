@@ -67,11 +67,25 @@ double audioNowTime = 0;
 //全局变量
 jobject mthiz;
 
+//end标记
+bool isEnd = true;
+
 //暂停标记
 bool isPause = false;
 pthread_mutex_t pauseMutex = PTHREAD_MUTEX_INITIALIZER;
 
-//回调方法
+//暂停方法
+auto handlePause = []() {
+    pthread_mutex_lock(&pauseMutex);
+    while (isPause) {
+        pthread_mutex_unlock(&pauseMutex);
+        av_usleep(10000); // 10 milliseconds
+        pthread_mutex_lock(&pauseMutex);
+    }
+    pthread_mutex_unlock(&pauseMutex);
+};
+
+//回调方法:播放音频
 jmethodID playTrack;
 _JavaVM *javaVM = NULL;
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -104,14 +118,12 @@ bool isStart = false;
 
 void *decodePacket(void *pVoid) {
     //LOGI("==========解码线程");
+    pthread_mutex_lock(&pauseMutex);
+    isPause= false;
+    pthread_mutex_unlock(&pauseMutex);
     while (isStart) {
-        pthread_mutex_lock(&pauseMutex);
-        while (isPause) {
-            pthread_mutex_unlock(&pauseMutex);
-            av_usleep(10000);  // Sleep for 10 ms to prevent busy waiting
-            pthread_mutex_lock(&pauseMutex);
-        }
-        pthread_mutex_unlock(&pauseMutex);
+        //暂停
+        handlePause();
 
         if (audioQueue->size() > 50 || videoQueue->size() > 50) {
             continue;
@@ -140,15 +152,14 @@ void *decodePacket(void *pVoid) {
 //视频解码线程
 void *decodeVideo(void *pVoid) {
     //LOGI("==========视频解码线程");
+    isEnd=false;
+    pthread_mutex_lock(&pauseMutex);
+    isPause= false;
+    pthread_mutex_unlock(&pauseMutex);
     while (isStart) {
         //暂停
-        pthread_mutex_lock(&pauseMutex);
-        while (isPause) {
-            pthread_mutex_unlock(&pauseMutex);
-            av_usleep(10000);
-            pthread_mutex_lock(&pauseMutex);
-        }
-        pthread_mutex_unlock(&pauseMutex);
+        handlePause();
+
 
         AVPacket *videoPacket = av_packet_alloc();
         videoQueue->getAvPacket(videoPacket);
@@ -192,6 +203,7 @@ void *decodeVideo(void *pVoid) {
         videoPacket = NULL;
 
     }
+    isEnd=true;
     return NULL;
 }
 
@@ -212,16 +224,14 @@ void *decodeAudio(void *pVoid) {
     int out_channels_nb = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
 
     uint8_t * out_buffer = (uint8_t *) av_malloc(44100 * 2);
+
+    pthread_mutex_lock(&pauseMutex);
+    isPause= false;
+    pthread_mutex_unlock(&pauseMutex);
     while (isStart) {
 
         //暂停
-        pthread_mutex_lock(&pauseMutex);
-        while (isPause) {
-            pthread_mutex_unlock(&pauseMutex);
-            av_usleep(10000);
-            pthread_mutex_lock(&pauseMutex);
-        }
-        pthread_mutex_unlock(&pauseMutex);
+        handlePause();
 
         AVPacket *audioPacket = av_packet_alloc();
         audioQueue->getAvPacket(audioPacket);

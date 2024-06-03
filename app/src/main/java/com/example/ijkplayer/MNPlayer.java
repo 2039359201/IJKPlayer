@@ -19,6 +19,7 @@ public class MNPlayer {
     //Audio Track
     private AudioTrack audioTrack;
 
+
     public MNPlayer(SurfaceView surfaceView) {
         this.surfaceView = surfaceView;
     }
@@ -77,4 +78,5 @@ public class MNPlayer {
         //调整播放器大小
         surfaceView.setLayoutParams(params);
     }
+
 }
