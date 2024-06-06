@@ -12,6 +12,8 @@
 #define LOGQ(...) __android_log_print(ANDROID_LOG_INFO,"队列层",__VA_ARGS__)
 #define LOGA(...) __android_log_print(ANDROID_LOG_INFO,"音频层",__VA_ARGS__)
 
+
+
 extern "C" {
 #include "include/libavcodec/avcodec.h"
 #include "include/libavformat/avformat.h"
@@ -427,3 +429,4 @@ Java_com_example_ijkplayer_MNPlayer_pause(JNIEnv *env, jobject thiz) {
     isPause = !isPause;
     pthread_mutex_unlock(&pauseMutex);
 }
+

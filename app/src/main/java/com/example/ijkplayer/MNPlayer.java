@@ -1,5 +1,6 @@
 package com.example.ijkplayer;
 
+import android.content.res.Configuration;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -69,14 +70,30 @@ public class MNPlayer {
 
     public void onSizeChanged(int width, int height) {
         float ratio = (float) width / height;
-        int screenwidth = surfaceView.getContext().getResources().getDisplayMetrics().widthPixels;
+        videoRatio = ratio;
+        int screenWidth = surfaceView.getContext().getResources().getDisplayMetrics().widthPixels;
+        int screenHeight = surfaceView.getContext().getResources().getDisplayMetrics().heightPixels;
+        float screenRatio = (float) screenWidth / screenHeight;
         int videoWidth = 0;
         int videoHeight = 0;
-        videoWidth = screenwidth;
-        videoHeight = (int) (screenwidth / ratio);
+        if (screenRatio > ratio) {
+            videoHeight = screenHeight;
+            videoWidth = (int) (videoHeight * ratio);
+        } else {
+            videoWidth = screenWidth;
+            videoHeight = (int) (videoWidth / ratio);
+        }
         RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(videoWidth, videoHeight);
+        params.addRule(RelativeLayout.CENTER_IN_PARENT);
         //调整播放器大小
         surfaceView.setLayoutParams(params);
+
     }
+
+    //横屏视频参数
+    public float videoRatio = 0;
+
+    //横竖屏切换
+
 
 }

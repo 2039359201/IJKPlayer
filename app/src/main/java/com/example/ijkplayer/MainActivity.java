@@ -11,6 +11,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import com.example.ijkplayer.databinding.ActivityMainBinding;
@@ -96,6 +97,39 @@ public class MainActivity extends AppCompatActivity {
         mnPlayer.play(folderurl,surface);
 
     }
+
+
+    //横竖屏切换
+    @Override
+    public void onConfigurationChanged(@NonNull android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        ViewGroup.LayoutParams params = surfaceView.getLayoutParams();
+        if (newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            //横屏
+            Toast.makeText(MainActivity.this, "横屏", Toast.LENGTH_SHORT).show();
+            params.height = surfaceView.getContext().getResources().getDisplayMetrics().heightPixels;
+            params.width = surfaceView.getContext().getResources().getDisplayMetrics().widthPixels;
+            if(mnPlayer!=null){
+                params.width = (int) (params.height*mnPlayer.videoRatio);
+            }
+            //隐藏状态栏
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
+        } else {
+            //竖屏
+            Toast.makeText(MainActivity.this, "竖屏", Toast.LENGTH_SHORT).show();
+            params.height = surfaceView.getContext().getResources().getDisplayMetrics().heightPixels;
+            params.width = surfaceView.getContext().getResources().getDisplayMetrics().widthPixels;
+            if(mnPlayer!=null){
+                params.height = (int) (params.width/mnPlayer.videoRatio);
+            }
+            //显示状态栏
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+        }
+        mnPlayer.surfaceView.setLayoutParams(params);
+    }
+
+
 
 
     private Button playButton;
