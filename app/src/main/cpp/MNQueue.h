@@ -9,7 +9,7 @@
 #include "pthread.h"
 
 extern "C"{
-#include "include/libavcodec/avcodec.h"
+#include "../../../../../../IJKPlayer/app/src/main/cpp/include/libavcodec/avcodec.h"
 };
 
 class MNQueue {

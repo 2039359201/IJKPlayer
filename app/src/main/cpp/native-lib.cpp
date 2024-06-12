@@ -15,15 +15,15 @@
 
 
 extern "C" {
-#include "include/libavcodec/avcodec.h"
-#include "include/libavformat/avformat.h"
-#include "include/libavutil/avutil.h"
-#include "include/libavutil/frame.h"
-#include "include/libavutil/imgutils.h"
-#include "include/libswscale/swscale.h"
-#include "include/libavutil/time.h"
-#include "include/libswresample/swresample.h"
-#include "include/libavutil/channel_layout.h"
+#include "libavcodec/avcodec.h"
+#include "libavformat/avformat.h"
+#include "libavutil/avutil.h"
+#include "libavutil/frame.h"
+#include "libavutil/imgutils.h"
+#include "libswscale/swscale.h"
+#include "libavutil/time.h"
+#include "libswresample/swresample.h"
+#include "libavutil/channel_layout.h"
 }
 
 
